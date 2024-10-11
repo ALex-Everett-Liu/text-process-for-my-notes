@@ -3,52 +3,67 @@ import tkinter as tk
 from tkinter import messagebox
 
 def is_Chinese(word):
+    """Check if a string contains any Chinese characters."""
     for ch in word:
         if '\u4e00' <= ch <= '\u9fff':
             return True
     return False
 
 def is_al_num(word):
+    """Check if a word is alphanumeric, excluding certain symbols."""
     word = word.replace("_", "").replace(" ", "").replace("()", "").encode('UTF-8')
-    if word.isalpha():
-        return True
-    if word.isdigit():
-        return True
-    if word.isalnum():
-        return True
-    return False
+    return word.isalnum()
 
 def beautifyText(text, pattern, isloop):
+    """Format text based on patterns, ensuring correct spacing."""
     res = re.compile(pattern)
-    p1 = res.split(text)
+    segments = res.split(text)
     result = ""
-    for index in range(len(p1)):
-        str = p1[index]
-        if "\n" == str:
-            result += str
+
+    for index, segment in enumerate(segments):
+        if "\n" == segment:
+            result += segment
             continue
 
-        if is_Chinese(str):
-            result += str
-        elif is_al_num(str):
+        if is_Chinese(segment):
+            result += segment
+        elif is_al_num(segment):
+            # Adjust spaces around alphanumeric segments
             if isloop and index == 0:
-                result += (str.strip() + " ")
+                result += (segment.strip() + " ")
             else:
-                result += (" " + str.strip() + " ")
+                result += (" " + segment.strip() + " ")
         else:
+            # Handle punctuation and symbols to ensure spacing
             if isloop:
-                result += beautifyText(str, r"([。，？！,!]+)", False)
+                result += beautifyText(segment, r"([。，？！,!：\-]+)", False)
             else:
-                result += str
+                result += add_spacing(segment)
     return result
 
+def add_spacing(segment):
+    """Add a single space around specific characters."""
+    # Define characters that should have spaces around them
+    symbols_with_spaces = [":", "-", "：", "—", "–"]
+
+    # Use regex to find these symbols and add spaces around them
+    for symbol in symbols_with_spaces:
+        segment = re.sub(f" *{re.escape(symbol)} *", f" {symbol} ", segment)
+    
+    # Remove extra spaces created by the replacements
+    segment = re.sub(r'\s+', ' ', segment).strip()
+    
+    return segment
+
 def process_beautify():
+    """Process the input text and display beautified text."""
     input_text = text_widget.get("1.0", tk.END).strip()
     if input_text:
         beautified_text = beautifyText(input_text, r"([\u4e00-\u9fff])", True)
         display_result(beautified_text)
 
 def process_replace():
+    """Replace specific patterns and display the replaced text."""
     input_text = text_widget.get("1.0", tk.END).strip()
     if input_text:
         pattern = r'(\[|\])'
@@ -56,12 +71,14 @@ def process_replace():
         display_result(replaced_text)
 
 def display_result(result_text):
+    """Display the processed text in the result text widget."""
     result_text_widget.config(state=tk.NORMAL)
     result_text_widget.delete("1.0", tk.END)
     result_text_widget.insert(tk.END, result_text)
     result_text_widget.config(state=tk.DISABLED)
 
 def copy_to_clipboard():
+    """Copy the processed text to the clipboard."""
     result_text = result_text_widget.get("1.0", tk.END).strip()
     if result_text:
         root.clipboard_clear()
